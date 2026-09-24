@@ -239,6 +239,18 @@ body {
   margin: 0 0 12px;
 }
 
+/* Only in the Journals feed's DaySection, not the single-day tab view —
+   clicking opens that day as its own tab, e.g. so Cmd/Ctrl+F has an
+   unambiguous doc to scope find & replace to. */
+.mn-day-title-link {
+  cursor: pointer;
+  width: fit-content;
+}
+
+.mn-day-title-link:hover {
+  text-decoration: underline;
+}
+
 .mn-page-header {
   display: flex;
   align-items: center;
