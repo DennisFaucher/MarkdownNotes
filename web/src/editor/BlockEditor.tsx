@@ -1,16 +1,19 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useDocStore } from "../state/useDocStore";
 import { useUiStore } from "../state/useUiStore";
-import { fetchTags } from "../sync/api";
+import { fetchPage, fetchTags } from "../sync/api";
 import { flushSave, scheduleSave } from "../sync/autosave";
 import { getCaretCoordinates } from "./caretPosition";
 import { handleBlockKeyDown } from "./keymap";
 import { insertUploadedImage } from "./imageInsert";
 import * as ops from "./ops";
 import { parsePastedMarkdown } from "./pasteMarkdown";
+import { SlashTemplatePopover } from "./SlashTemplatePopover";
+import { detectSlashQuery, type SlashQuery } from "./slashAutocomplete";
 import { SpellcheckOverlay } from "./SpellcheckOverlay";
 import { TagAutocompletePopover } from "./TagAutocompletePopover";
 import { detectTagQuery, filterTags, type TagQuery } from "./tagAutocomplete";
+import { filterTemplates, parseTemplates, type Template } from "./templates";
 import { useBlockSpellCheck } from "./useBlockSpellCheck";
 import type { EditorBlock } from "../types/block";
 
@@ -76,6 +79,61 @@ export function BlockEditor({ docId, index, block }: Props) {
     setTagAnchor(null);
   };
 
+  // Slash-command templates. Same lazy-fetch-once-then-cache shape as tags
+  // above, but sourced from the vault's "Templates" page (see templates.ts)
+  // instead of the tag index — reusing an ordinary page as storage means
+  // authoring a template is just normal block editing, nothing bespoke.
+  const [slashQuery, setSlashQuery] = useState<SlashQuery | null>(null);
+  const [templateMatches, setTemplateMatches] = useState<Template[]>([]);
+  const [templateActiveIndex, setTemplateActiveIndex] = useState(0);
+  const [slashAnchor, setSlashAnchor] = useState<{ x: number; top: number; bottom: number } | null>(null);
+  const allTemplatesRef = useRef<Template[] | null>(null);
+
+  const updateSlashQuery = (ta: HTMLTextAreaElement) => {
+    const q = detectSlashQuery(ta.value, ta.selectionStart);
+    if (!q) {
+      setSlashQuery(null);
+      setTemplateMatches([]);
+      setSlashAnchor(null);
+      return;
+    }
+    setSlashQuery(q);
+    setTemplateActiveIndex(0);
+    const coords = getCaretCoordinates(ta, q.start);
+    setSlashAnchor({ x: coords.left, top: coords.top, bottom: coords.top + coords.height });
+    if (allTemplatesRef.current) {
+      setTemplateMatches(filterTemplates(allTemplatesRef.current, q.query));
+    } else {
+      fetchPage("Templates")
+        .then((doc) => {
+          const templates = parseTemplates(doc);
+          allTemplatesRef.current = templates;
+          setTemplateMatches(filterTemplates(templates, q.query));
+        })
+        .catch(() => {
+          // No Templates page yet (or unreachable) — cache an empty list so
+          // this doesn't refetch on every keystroke; typing "/" just won't
+          // suggest anything until a Templates page exists.
+          allTemplatesRef.current = [];
+        });
+    }
+  };
+
+  const acceptTemplate = (template: Template) => {
+    const ta = ref.current;
+    if (!slashQuery || !ta) return;
+    const blocks = useDocStore.getState().docs[docId].blocks;
+    const baseDepth = blocks[index].depth;
+    const rebased = template.entries.map((e) => ({ depth: baseDepth + e.depth, content: e.content }));
+    const { blocks: nb, focus } = ops.pasteBlocks(blocks, index, slashQuery.start, ta.selectionStart, rebased);
+    useDocStore.getState().updateBlocks(docId, () => nb, true);
+    useUiStore.getState().requestFocus({ docId, blockId: focus.blockId, pos: focus.pos });
+    scheduleSave(docId);
+    setSlashQuery(null);
+    setTemplateMatches([]);
+    setSlashAnchor(null);
+  };
+
   useLayoutEffect(() => {
     const ta = ref.current;
     if (!ta) return;
@@ -137,6 +195,17 @@ export function BlockEditor({ docId, index, block }: Props) {
           onSelect={acceptTag}
         />
       )}
+      {slashQuery && slashAnchor && templateMatches.length > 0 && (
+        <SlashTemplatePopover
+          x={slashAnchor.x}
+          top={slashAnchor.top}
+          bottom={slashAnchor.bottom}
+          matches={templateMatches}
+          activeIndex={templateActiveIndex}
+          onHover={setTemplateActiveIndex}
+          onSelect={acceptTemplate}
+        />
+      )}
       <textarea
         ref={ref}
         className="mn-block-editor"
@@ -148,8 +217,12 @@ export function BlockEditor({ docId, index, block }: Props) {
           useDocStore.getState().updateBlocks(docId, (blocks) => ops.updateBlockSource(blocks, index, value), false);
           scheduleSave(docId);
           updateTagQuery(e.currentTarget);
+          updateSlashQuery(e.currentTarget);
         }}
-        onSelect={(e) => updateTagQuery(e.currentTarget)}
+        onSelect={(e) => {
+          updateTagQuery(e.currentTarget);
+          updateSlashQuery(e.currentTarget);
+        }}
         onKeyDown={(e) => {
           if (tagQuery && tagMatches.length > 0) {
             if (e.key === "ArrowDown") {
@@ -172,6 +245,30 @@ export function BlockEditor({ docId, index, block }: Props) {
               setTagQuery(null);
               setTagMatches([]);
               setTagAnchor(null);
+              return;
+            }
+          }
+          if (slashQuery && templateMatches.length > 0) {
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setTemplateActiveIndex((i) => (i + 1) % templateMatches.length);
+              return;
+            }
+            if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setTemplateActiveIndex((i) => (i - 1 + templateMatches.length) % templateMatches.length);
+              return;
+            }
+            if (e.key === "Enter" || e.key === "Tab") {
+              e.preventDefault();
+              acceptTemplate(templateMatches[templateActiveIndex]);
+              return;
+            }
+            if (e.key === "Escape") {
+              e.preventDefault();
+              setSlashQuery(null);
+              setTemplateMatches([]);
+              setSlashAnchor(null);
               return;
             }
           }
