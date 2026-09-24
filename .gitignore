@@ -1,0 +1,21 @@
+node_modules/
+dist/
+build/
+
+# Notes are private content — never committed. Anchored to the project root
+# (leading /) so this doesn't also match the real source directory
+# server/src/vault/ — an unanchored "vault/" pattern matches at any depth.
+/vault/
+*.conflict-*.md
+
+.env
+.env.local
+
+# SQLite index (disposable, rebuilt from vault)
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+data/
+
+.DS_Store
+*.log

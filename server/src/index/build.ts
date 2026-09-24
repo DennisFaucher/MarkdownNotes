@@ -1,0 +1,111 @@
+import { readdir } from "node:fs/promises";
+import { join, relative } from "node:path";
+import { getIndex } from "./db.js";
+import { JOURNALS_DIR, PAGES_DIR, VAULT_PATH } from "../config.js";
+import { parseDoc } from "../markdown/tokenize.js";
+import { deriveBlock } from "../markdown/derive.js";
+import { readRaw, hashContent } from "../vault/write.js";
+import { filenameToPageTitle, formatJournalTitle, journalDateFromFilename } from "../vault/files.js";
+
+function relPath(absPath: string): string {
+  return relative(VAULT_PATH, absPath).split("\\").join("/");
+}
+
+function titleFor(absPath: string, kind: "journal" | "page", filename: string): string {
+  if (kind === "journal") {
+    const date = journalDateFromFilename(filename);
+    return date ? formatJournalTitle(date) : filename;
+  }
+  return filenameToPageTitle(filename);
+}
+
+/**
+ * Re-indexes a single file: clears its old rows (if any) and inserts fresh
+ * ones. Used for both the initial full rebuild and incremental updates from
+ * the watcher. Returns the file's content hash — the watcher forwards it in
+ * the live-sync broadcast so a client can tell "this is just an echo of my
+ * own save" (hash matches what it already has) from a genuine external
+ * change (hash differs), without needing separate self-write suppression.
+ */
+export async function indexFile(absPath: string, kind: "journal" | "page"): Promise<{ hash: string } | null> {
+  const db = getIndex();
+  const path = relPath(absPath);
+  const filename = path.split("/").pop()!;
+
+  removeFileFromIndex(path);
+
+  const raw = await readRaw(absPath);
+  if (raw === null) return null; // file was deleted between the watch event and this read
+
+  const doc = parseDoc(raw);
+  const title = titleFor(absPath, kind, filename);
+  const hash = hashContent(raw);
+
+  db.prepare("INSERT INTO files (path, kind, title, mtime, hash) VALUES (?, ?, ?, ?, ?)").run(
+    path,
+    kind,
+    title,
+    Date.now(),
+    hash,
+  );
+
+  const insertBlock = db.prepare(
+    "INSERT INTO blocks (id, path, block_index, depth, content, marker, top_content) VALUES (?, ?, ?, ?, ?, ?, ?)",
+  );
+  const insertFts = db.prepare("INSERT INTO blocks_fts (content, block_id, path) VALUES (?, ?, ?)");
+  const insertTag = db.prepare("INSERT INTO tags (tag, block_id, path) VALUES (?, ?, ?)");
+  const insertLink = db.prepare("INSERT INTO links (from_path, to_title) VALUES (?, ?)");
+
+  // Tracks the nearest preceding (or own) depth-0 block's content as we walk
+  // the file in order, so every block can be stamped with "which top-level
+  // section am I under" without a parent pointer or a runtime tree-walk.
+  let topContent = title;
+  doc.blocks.forEach((block, index) => {
+    const derived = deriveBlock(block);
+    const content = derived.content.trim();
+    if (block.depth === 0 && content.length > 0) topContent = content;
+    if (content.length === 0) return; // nothing to search or tag
+
+    insertBlock.run(block.id, path, index, block.depth, content, derived.marker ?? null, topContent);
+    insertFts.run(content, block.id, path);
+    for (const tag of derived.tags) insertTag.run(tag, block.id, path);
+    for (const ref of derived.refs) insertLink.run(path, ref);
+  });
+
+  return { hash };
+}
+
+export function removeFileFromIndex(path: string): void {
+  const db = getIndex();
+  db.prepare("DELETE FROM files WHERE path = ?").run(path);
+  db.prepare("DELETE FROM blocks WHERE path = ?").run(path);
+  db.prepare("DELETE FROM blocks_fts WHERE path = ?").run(path);
+  db.prepare("DELETE FROM tags WHERE path = ?").run(path);
+  db.prepare("DELETE FROM links WHERE from_path = ?").run(path);
+}
+
+async function listMarkdownFiles(dir: string): Promise<string[]> {
+  try {
+    const entries = await readdir(dir);
+    return entries.filter((f) => f.endsWith(".md")).map((f) => join(dir, f));
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw err;
+  }
+}
+
+/** Full rebuild from the markdown vault — the index's only source of truth. */
+export async function rebuildIndex(): Promise<void> {
+  const [journalFiles, pageFiles] = await Promise.all([listMarkdownFiles(JOURNALS_DIR), listMarkdownFiles(PAGES_DIR)]);
+  for (const f of journalFiles) await indexFile(f, "journal");
+  for (const f of pageFiles) await indexFile(f, "page");
+}
+
+export function pathKind(absPath: string): "journal" | "page" | null {
+  const rel = relPath(absPath);
+  if (rel.startsWith("journals/")) return "journal";
+  if (rel.startsWith("pages/")) return "page";
+  return null;
+}
+
+export { relPath };

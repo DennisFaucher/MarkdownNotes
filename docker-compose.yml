@@ -1,0 +1,31 @@
+services:
+  app:
+    build: .
+    ports:
+      # Localhost-only by default — there's no login/auth on the app itself,
+      # so opening this to the LAN is an explicit opt-in via BIND_ADDR in
+      # .env (e.g. BIND_ADDR=0.0.0.0), not something this default risks.
+      - "${BIND_ADDR:-127.0.0.1}:${PORT:-3000}:3000"
+    volumes:
+      - ${VAULT_HOST_PATH:-./vault}:/vault
+      # Disposable SQLite search/tag index — rebuilt from the vault at every
+      # startup, so it's a named volume rather than a bind mount; nothing here
+      # needs to be human-readable or backed up.
+      - index-db:/data
+      # Without this the container defaults to UTC, so "today" in journals can
+      # be wrong for hours around midnight in any timezone west of UTC.
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      VAULT_PATH: /vault
+      DB_PATH: /data/index.sqlite
+      PORT: 3000
+      # /etc/localtime alone isn't enough — Node's timezone resolution needs TZ
+      # explicitly set, or journal "today" is computed in UTC.
+      TZ: ${TZ:-UTC}
+      LANGUAGETOOL_URL: ${LANGUAGETOOL_URL:-}
+      LANGUAGETOOL_LANGUAGE: ${LANGUAGETOOL_LANGUAGE:-en-US}
+    user: "${PUID:-1000}:${PGID:-1000}"
+    restart: unless-stopped
+
+volumes:
+  index-db:

@@ -1,0 +1,34 @@
+services:
+  app:
+    build:
+      context: .
+      target: builder
+    command: npx tsx watch server/src/index.ts
+    volumes:
+      - ./server/src:/app/server/src
+      - ${VAULT_HOST_PATH:-./vault}:/vault
+      # Bind-mounted (not a named volume, unlike the prod compose file) since the
+      # dev target is the "builder" stage, which doesn't pre-create /data's
+      # permissions the way the production stage does — a host directory just
+      # inherits whatever created it instead.
+      - ./data:/data
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "127.0.0.1:${PORT:-3000}:3000"
+    user: "${PUID:-1000}:${PGID:-1000}"
+    environment:
+      DB_PATH: /data/index.sqlite
+      TZ: ${TZ:-UTC}
+
+  web:
+    build:
+      context: .
+      target: builder
+    working_dir: /app/web
+    command: npx vite --host 0.0.0.0
+    volumes:
+      - ./web:/app/web
+    ports:
+      - "127.0.0.1:5173:5173"
+    depends_on:
+      - app
