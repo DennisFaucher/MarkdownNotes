@@ -5,6 +5,8 @@ import { TopBar } from "./layout/TopBar";
 import { MainPane } from "./layout/MainPane";
 import { SearchModal } from "./views/SearchModal";
 import { useUiStore } from "./state/useUiStore";
+import { getCurrentDocId } from "./editor/currentDoc";
+import { FindReplaceBar } from "./editor/FindReplaceBar";
 import { useGlobalCut } from "./editor/useGlobalCut";
 import { useGlobalIndent } from "./editor/useGlobalIndent";
 import { useGlobalDelete } from "./editor/useGlobalDelete";
@@ -34,6 +36,13 @@ export function App() {
         e.preventDefault();
         useUiStore.getState().toggleSearch();
       }
+      // Only takes over Cmd/Ctrl+F when there's an actual doc to scope it to
+      // (a page/journal-day tab, or a day in the Journals feed you've clicked
+      // into) — otherwise falls through to the browser's own in-page find.
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f" && getCurrentDocId()) {
+        e.preventDefault();
+        useUiStore.getState().toggleFindReplace();
+      }
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
@@ -48,6 +57,7 @@ export function App() {
         <MainPane />
       </div>
       <SearchModal />
+      <FindReplaceBar />
     </div>
   );
 }

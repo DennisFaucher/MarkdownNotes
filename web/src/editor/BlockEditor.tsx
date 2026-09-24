@@ -89,7 +89,8 @@ export function BlockEditor({ docId, index, block }: Props) {
     if (pendingFocus && pendingFocus.docId === docId && pendingFocus.blockId === block.id) {
       ta.focus();
       const pos = pendingFocus.pos === "end" ? ta.value.length : pendingFocus.pos;
-      ta.setSelectionRange(pos, pos);
+      const end = pendingFocus.selectionLength ? pos + pendingFocus.selectionLength : pos;
+      ta.setSelectionRange(pos, end);
       clearPendingFocus();
     }
   }, [pendingFocus, docId, block.id, clearPendingFocus]);

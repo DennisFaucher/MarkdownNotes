@@ -758,6 +758,72 @@ body {
   border-radius: 2px;
 }
 
+/* Find & replace bar */
+.mn-findreplace-bar {
+  position: fixed;
+  top: 12px;
+  right: 24px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--mn-content-bg);
+  border: 1px solid var(--mn-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  padding: 8px 10px;
+  font-size: 13px;
+  flex-wrap: wrap;
+  max-width: calc(100vw - 48px);
+}
+
+.mn-findreplace-input {
+  border: 1px solid var(--mn-border);
+  border-radius: 5px;
+  background: var(--mn-body-bg);
+  color: var(--mn-text);
+  font: inherit;
+  padding: 5px 8px;
+  width: 150px;
+}
+
+.mn-findreplace-count {
+  opacity: 0.7;
+  white-space: nowrap;
+  min-width: 64px;
+  text-align: center;
+}
+
+.mn-findreplace-bar button {
+  border: 1px solid var(--mn-border);
+  background: var(--mn-sidebar-bg);
+  color: var(--mn-text);
+  border-radius: 5px;
+  padding: 5px 9px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.mn-findreplace-bar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.mn-findreplace-case {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.mn-findreplace-close {
+  margin-left: 4px;
+}
+
+.mn-findreplace-empty {
+  padding: 2px 6px;
+}
+
 .mn-search-create {
   font-size: 13px;
   color: var(--mn-link-internal);
@@ -935,6 +1001,16 @@ body {
     inset: 0;
     background: rgba(0, 0, 0, 0.35);
     z-index: 290;
+  }
+
+  .mn-findreplace-bar {
+    left: 12px;
+    right: 12px;
+    top: 8px;
+  }
+
+  .mn-findreplace-input {
+    width: 40vw;
   }
 
   /* Full-width content — the sidebar no longer takes up permanent space. */

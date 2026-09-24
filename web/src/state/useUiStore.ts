@@ -4,6 +4,10 @@ export interface FocusRequest {
   docId: string;
   blockId: string;
   pos: number | "end";
+  /** When set, selects [pos, pos+selectionLength) instead of leaving a
+   *  collapsed caret — used to highlight a find-match once its block is
+   *  focused, the same way native browser find highlights a hit. */
+  selectionLength?: number;
 }
 
 interface UiState {
@@ -21,6 +25,12 @@ interface UiState {
   openSearch: () => void;
   closeSearch: () => void;
   toggleSearch: () => void;
+  /** The current-doc find & replace bar (Cmd/Ctrl+F) — distinct from the
+   *  global Cmd+K search modal above. */
+  findReplaceOpen: boolean;
+  openFindReplace: () => void;
+  closeFindReplace: () => void;
+  toggleFindReplace: () => void;
   /** Whether the server has a LANGUAGETOOL_URL configured — set once at
    *  startup (see App.tsx). Spellcheck UI stays fully inert until this is true. */
   spellcheckEnabled: boolean;
@@ -71,6 +81,10 @@ export const useUiStore = create<UiState>((set) => ({
   openSearch: () => set({ searchOpen: true }),
   closeSearch: () => set({ searchOpen: false }),
   toggleSearch: () => set((state) => ({ searchOpen: !state.searchOpen })),
+  findReplaceOpen: false,
+  openFindReplace: () => set({ findReplaceOpen: true }),
+  closeFindReplace: () => set({ findReplaceOpen: false }),
+  toggleFindReplace: () => set((state) => ({ findReplaceOpen: !state.findReplaceOpen })),
   spellcheckEnabled: false,
   setSpellcheckEnabled: (enabled) => set({ spellcheckEnabled: enabled }),
   pendingSpellOpen: null,

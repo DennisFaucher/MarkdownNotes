@@ -1,5 +1,6 @@
 import type { EditorBlock } from "../types/block";
 import { deriveFromSource, newBlockId } from "./derive";
+import { replaceAllInString } from "./findReplace";
 
 export interface FocusTarget {
   blockId: string;
@@ -315,4 +316,30 @@ export function replaceRange(
   const next = [...blocks];
   next[index] = withSource(b, newSource);
   return { blocks: next, focus: { blockId: b.id, pos: offset + replacement.length } };
+}
+
+/** Find & replace, scoped to the whole doc's blocks — every occurrence in
+ *  every block's own source is replaced, block by block. */
+export function replaceAll(blocks: EditorBlock[], query: string, replacement: string, caseSensitive: boolean): EditorBlock[] {
+  if (!query) return blocks;
+  return blocks.map((b) => {
+    const newSource = replaceAllInString(b.source, query, replacement, caseSensitive);
+    return newSource === b.source ? b : withSource(b, newSource);
+  });
+}
+
+/** Expands every collapsed ancestor of `blockIndex` so it's actually rendered
+ *  — used before jumping a find-match into view, since a match inside a
+ *  collapsed subtree has no mounted block to focus. Walks upward by depth,
+ *  same traversal shape as getVisibleIndices' downward one. */
+export function ensureVisible(blocks: EditorBlock[], blockIndex: number): EditorBlock[] {
+  let result = blocks;
+  let minDepth = result[blockIndex].depth;
+  for (let i = blockIndex - 1; i >= 0 && minDepth > 0; i--) {
+    if (result[i].depth < minDepth) {
+      if (result[i].collapsed) result = toggleCollapse(result, i);
+      minDepth = result[i].depth;
+    }
+  }
+  return result;
 }
