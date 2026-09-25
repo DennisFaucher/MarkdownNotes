@@ -18,7 +18,6 @@ import { startWatcher } from "./vault/watcher.js";
 
 async function main() {
   openIndex();
-  await rebuildIndex();
   startWatcher();
 
   const app = express();
@@ -56,6 +55,18 @@ async function main() {
   app.listen(PORT, () => {
     console.log(`MarkdownNotes server listening on :${PORT}`);
   });
+
+  // Journals/pages are read straight from disk and never depended on this
+  // index — only search, tags, and To Dos do. Building it in the background
+  // means the app is usable within a second or two even on a large vault
+  // over a slow filesystem (NFS, etc.), instead of every route waiting on a
+  // full sequential vault scan before the server even starts accepting
+  // connections. Search/tags/todos just show partial results until this
+  // finishes, which — now parallelized — is a much shorter window than the
+  // multi-minute startup this used to gate.
+  rebuildIndex()
+    .then(() => console.log("Index rebuild complete"))
+    .catch((err) => console.error("index rebuild failed", err));
 }
 
 main().catch((err) => {

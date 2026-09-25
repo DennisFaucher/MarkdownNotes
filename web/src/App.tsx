@@ -3,6 +3,7 @@ import { Sidebar } from "./layout/Sidebar";
 import { TabBar } from "./layout/TabBar";
 import { TopBar } from "./layout/TopBar";
 import { MainPane } from "./layout/MainPane";
+import { CalendarPicker } from "./views/CalendarPicker";
 import { SearchModal } from "./views/SearchModal";
 import { useUiStore } from "./state/useUiStore";
 import { getCurrentDocId } from "./editor/currentDoc";
@@ -57,6 +58,7 @@ export function App() {
         <MainPane />
       </div>
       <SearchModal />
+      <CalendarPicker />
       <FindReplaceBar />
     </div>
   );

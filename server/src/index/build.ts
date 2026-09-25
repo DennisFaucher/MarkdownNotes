@@ -19,6 +19,32 @@ function titleFor(absPath: string, kind: "journal" | "page", filename: string): 
   return filenameToPageTitle(filename);
 }
 
+// Serializes indexFile calls that land on the same path. The background
+// rebuild (many paths, run concurrently — see rebuildIndex) and the file
+// watcher (started immediately, not after the rebuild finishes) can now both
+// end up indexing the *same* path around the same time — e.g. the watcher's
+// poller notices a file rebuildIndex hasn't reached yet. Each call's own
+// delete-then-insert is fine in isolation, but two interleaved without a lock
+// race: the second call's DELETE runs before the first's INSERT lands, so
+// nothing removes that first row before the second call tries to insert its
+// own — a UNIQUE constraint violation on files.path. A per-path queue makes
+// overlapping calls run one after another instead, closing that window.
+const pathLocks = new Map<string, Promise<void>>();
+
+function withPathLock<T>(path: string, fn: () => Promise<T>): Promise<T> {
+  const prior = pathLocks.get(path) ?? Promise.resolve();
+  const result = prior.then(fn, fn);
+  const tracked = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  pathLocks.set(path, tracked);
+  tracked.finally(() => {
+    if (pathLocks.get(path) === tracked) pathLocks.delete(path);
+  });
+  return result;
+}
+
 /**
  * Re-indexes a single file: clears its old rows (if any) and inserts fresh
  * ones. Used for both the initial full rebuild and incremental updates from
@@ -27,7 +53,11 @@ function titleFor(absPath: string, kind: "journal" | "page", filename: string): 
  * own save" (hash matches what it already has) from a genuine external
  * change (hash differs), without needing separate self-write suppression.
  */
-export async function indexFile(absPath: string, kind: "journal" | "page"): Promise<{ hash: string } | null> {
+export function indexFile(absPath: string, kind: "journal" | "page"): Promise<{ hash: string } | null> {
+  return withPathLock(relPath(absPath), () => indexFileLocked(absPath, kind));
+}
+
+async function indexFileLocked(absPath: string, kind: "journal" | "page"): Promise<{ hash: string } | null> {
   const db = getIndex();
   const path = relPath(absPath);
   const filename = path.split("/").pop()!;
@@ -94,11 +124,29 @@ async function listMarkdownFiles(dir: string): Promise<string[]> {
   }
 }
 
+// Bounded rather than a single Promise.all over every file: each read is a
+// separate round trip to the underlying filesystem, and on a slow one (NFS,
+// especially) hundreds of those in true parallel risk exhausting connections/
+// file descriptors rather than helping. A modest concurrency window still
+// gets nearly all of the win over doing them one at a time.
+const REBUILD_CONCURRENCY = 16;
+
+async function mapWithConcurrency<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const item = items[next++];
+      await fn(item);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+}
+
 /** Full rebuild from the markdown vault — the index's only source of truth. */
 export async function rebuildIndex(): Promise<void> {
   const [journalFiles, pageFiles] = await Promise.all([listMarkdownFiles(JOURNALS_DIR), listMarkdownFiles(PAGES_DIR)]);
-  for (const f of journalFiles) await indexFile(f, "journal");
-  for (const f of pageFiles) await indexFile(f, "page");
+  await mapWithConcurrency(journalFiles, REBUILD_CONCURRENCY, (f) => indexFile(f, "journal").then(() => {}));
+  await mapWithConcurrency(pageFiles, REBUILD_CONCURRENCY, (f) => indexFile(f, "page").then(() => {}));
 }
 
 export function pathKind(absPath: string): "journal" | "page" | null {

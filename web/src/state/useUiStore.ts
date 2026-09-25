@@ -31,6 +31,13 @@ interface UiState {
   openFindReplace: () => void;
   closeFindReplace: () => void;
   toggleFindReplace: () => void;
+  /** Month-at-a-time date picker for jumping straight to a journal day —
+   *  there's no calendar view otherwise, so an old date (e.g. from an
+   *  imported vault) has no fast way to reach it besides scrolling. */
+  calendarOpen: boolean;
+  openCalendar: () => void;
+  closeCalendar: () => void;
+  toggleCalendar: () => void;
   /** Whether the server has a LANGUAGETOOL_URL configured — set once at
    *  startup (see App.tsx). Spellcheck UI stays fully inert until this is true. */
   spellcheckEnabled: boolean;
@@ -85,6 +92,10 @@ export const useUiStore = create<UiState>((set) => ({
   openFindReplace: () => set({ findReplaceOpen: true }),
   closeFindReplace: () => set({ findReplaceOpen: false }),
   toggleFindReplace: () => set((state) => ({ findReplaceOpen: !state.findReplaceOpen })),
+  calendarOpen: false,
+  openCalendar: () => set({ calendarOpen: true }),
+  closeCalendar: () => set({ calendarOpen: false }),
+  toggleCalendar: () => set((state) => ({ calendarOpen: !state.calendarOpen })),
   spellcheckEnabled: false,
   setSpellcheckEnabled: (enabled) => set({ spellcheckEnabled: enabled }),
   pendingSpellOpen: null,
