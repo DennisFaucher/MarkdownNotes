@@ -142,15 +142,35 @@ export function renderInline(
 }
 
 /** Resolves a DOM (node, offset) pair — from a click point or a Selection/Range
- * boundary — to a source character offset, via the nearest ancestor's data-s. */
+ * boundary — to a source character offset, via the nearest ancestor's data-s.
+ *
+ * A Range boundary can land directly on an *element* rather than a text node
+ * — DOM semantics say offset N there means "before child N" (or "after the
+ * last child" when N === childNodes.length), not a text offset. This is
+ * completely normal, not an edge case: dragging a selection to or past the
+ * end of the last rendered span on a line — the ordinary way to finish
+ * selecting a whole line — produces exactly this. Recursing into the actual
+ * child at that boundary (walking to the last child's own end when N is past
+ * everything) resolves it the same way a text-node boundary would, instead of
+ * failing outright.
+ */
 export function resolveNodeOffset(node: Node, offsetInNode: number, container?: HTMLElement): number | null {
-  const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement);
+  if (node.nodeType === Node.ELEMENT_NODE) {
+    const children = node.childNodes;
+    if (children.length === 0) return null;
+    if (offsetInNode >= children.length) {
+      return resolveNodeOffset(children[children.length - 1], Infinity, container);
+    }
+    return resolveNodeOffset(children[offsetInNode], 0, container);
+  }
+  const el = node.parentElement;
   const spanEl = el?.closest<HTMLElement>("[data-s]");
   if (!spanEl) return null;
   if (container && !container.contains(spanEl)) return null;
   const dataS = Number(spanEl.dataset.s);
   if (spanEl.dataset.chip === "true") return dataS;
-  return dataS + offsetInNode;
+  const offset = offsetInNode === Infinity ? (node.textContent?.length ?? 0) : offsetInNode;
+  return dataS + offset;
 }
 
 /** Maps a mouse click on rendered inline content back to a source character offset. */
