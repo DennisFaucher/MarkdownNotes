@@ -1,4 +1,5 @@
 import { getIndex } from "./db.js";
+import { toFtsQuery } from "./ftsQuery.js";
 
 export interface SearchResult {
   blockId: string;
@@ -14,14 +15,6 @@ export interface SearchResult {
   depth: number;
 }
 
-/** Escapes a raw user query into an FTS5 string-literal match — treats the
- *  whole input as literal text rather than FTS5's query syntax (AND/OR/NOT,
- *  column filters, etc.), which would otherwise throw on ordinary punctuation
- *  a note-taking search box should just accept. */
-function toFtsQuery(q: string): string {
-  return `"${q.replace(/"/g, '""')}"`;
-}
-
 // Sentinel control characters, not HTML tags — snippet() returns note content
 // verbatim with no escaping, so wrapping matches in literal "<mark>" here and
 // trusting the client to render it as HTML would let a note containing literal
@@ -32,22 +25,29 @@ const SNIPPET_START = "\u0001";
 const SNIPPET_END = "\u0002";
 
 export function searchBlocks(query: string, limit = 30): SearchResult[] {
-  const trimmed = query.trim();
-  if (trimmed.length === 0) return [];
+  const match = toFtsQuery(query.trim());
+  // A query made only of operators/punctuation leaves nothing to match.
+  if (match.length === 0) return [];
   const db = getIndex();
-  const rows = db
-    .prepare(
-      `SELECT blocks_fts.block_id AS blockId, blocks_fts.path AS path, files.title AS pageTitle, files.kind AS pageKind,
-              snippet(blocks_fts, 0, ?, ?, '…', 12) AS snippet, blocks.top_content AS topContent, blocks.depth AS depth
-       FROM blocks_fts
-       JOIN files ON files.path = blocks_fts.path
-       JOIN blocks ON blocks.id = blocks_fts.block_id
-       WHERE blocks_fts MATCH ?
-       ORDER BY rank
-       LIMIT ?`,
-    )
-    .all(SNIPPET_START, SNIPPET_END, toFtsQuery(trimmed), limit) as unknown as SearchResult[];
-  return rows;
+  try {
+    const rows = db
+      .prepare(
+        `SELECT blocks_fts.block_id AS blockId, blocks_fts.path AS path, files.title AS pageTitle, files.kind AS pageKind,
+                snippet(blocks_fts, 0, ?, ?, '…', 12) AS snippet, blocks.top_content AS topContent, blocks.depth AS depth
+         FROM blocks_fts
+         JOIN files ON files.path = blocks_fts.path
+         JOIN blocks ON blocks.id = blocks_fts.block_id
+         WHERE blocks_fts MATCH ?
+         ORDER BY rank
+         LIMIT ?`,
+      )
+      .all(SNIPPET_START, SNIPPET_END, match, limit) as unknown as SearchResult[];
+    return rows;
+  } catch {
+    // FTS5 raises on some malformed expressions. A search box should show "no
+    // results" for a query it can't parse, not surface a 500 to the user.
+    return [];
+  }
 }
 
 export interface TagSummary {
