@@ -2,6 +2,7 @@ import { useRef, type MouseEvent } from "react";
 import { getDisplayLines, groupDisplayLines } from "./derive";
 import { renderInline, resolveClickOffset } from "../render/renderInline";
 import { ResizableImage } from "../render/ResizableImage";
+import { CodeCopyButton } from "./CodeCopyButton";
 import { useTabsStore } from "../state/useTabsStore";
 import { useUiStore } from "../state/useUiStore";
 import { useBlockSpellCheck } from "./useBlockSpellCheck";
@@ -120,16 +121,19 @@ export function BlockStatic({ blockId, source, marker, onEnterEdit, onResizeImag
       {segments.map((seg, i) => {
         if (seg.kind === "code") {
           return (
-            <pre key={i} className="mn-code-block">
-              <code>
-                {seg.lines.map((l, j) => (
-                  <span key={j} data-s={l.sourceOffset} data-e={l.sourceOffset + l.text.length}>
-                    {l.text}
-                    {j < seg.lines.length - 1 ? "\n" : ""}
-                  </span>
-                ))}
-              </code>
-            </pre>
+            <div key={i} className="mn-code-wrap">
+              <pre className="mn-code-block">
+                <code>
+                  {seg.lines.map((l, j) => (
+                    <span key={j} data-s={l.sourceOffset} data-e={l.sourceOffset + l.text.length}>
+                      {l.text}
+                      {j < seg.lines.length - 1 ? "\n" : ""}
+                    </span>
+                  ))}
+                </code>
+              </pre>
+              <CodeCopyButton text={seg.lines.map((l) => l.text).join("\n")} />
+            </div>
           );
         }
         if (seg.kind === "table") {

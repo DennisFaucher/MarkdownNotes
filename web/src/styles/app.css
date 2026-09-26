@@ -668,6 +668,72 @@ body {
   white-space: pre;
 }
 
+/* Wrapper exists only to anchor the copy button: `.mn-day-section` sets
+   content-visibility:auto, which makes it a containing block for absolutely
+   positioned descendants, so without a positioned element of our own between
+   the two the button lands relative to the whole day section instead. */
+.mn-code-wrap {
+  position: relative;
+}
+
+/* Room for the button so code never runs underneath it. */
+.mn-code-wrap > .mn-code-block {
+  padding-right: 38px;
+}
+
+.mn-code-copy {
+  position: absolute;
+  top: 12px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--mn-border);
+  border-radius: 5px;
+  background: var(--mn-code-bg);
+  color: var(--mn-text);
+  opacity: 0.55;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.12s ease, color 0.12s ease;
+}
+
+.mn-code-wrap:hover .mn-code-copy,
+.mn-code-copy:focus-visible {
+  opacity: 1;
+}
+
+.mn-code-copy:hover {
+  border-color: var(--mn-title);
+  color: var(--mn-title);
+}
+
+.mn-code-copy:focus-visible {
+  outline: 2px solid var(--mn-title);
+  outline-offset: 1px;
+}
+
+.mn-code-copy.is-copied {
+  color: var(--mn-title);
+  border-color: var(--mn-title);
+}
+
+.mn-code-copy.is-failed {
+  color: #b4442c;
+  border-color: #b4442c;
+}
+
+/* No hover on a touchscreen, so a hover-revealed button would be unreachable
+   on the phone. */
+@media (hover: none) {
+  .mn-code-copy {
+    opacity: 1;
+  }
+}
+
 .mn-resizable-image {
   position: relative;
   display: inline-block;
