@@ -71,6 +71,20 @@ export function handleBlockKeyDown(e: KeyboardEvent<HTMLTextAreaElement>, docId:
   }
 
   if (e.key === "Backspace" && atStart) {
+    // An empty block is deleted rather than merged — merging it would be a
+    // no-op on content and, at index 0, impossible (no previous block to merge
+    // into). Checked before the adjacency test so an empty block whose
+    // previous sibling sits under a collapsed ancestor is still reachable.
+    if (block.source === "") {
+      const removed = ops.removeBlock(blocks, index);
+      if (removed) {
+        e.preventDefault();
+        store.updateBlocks(docId, () => removed.blocks, true);
+        requestFocus({ docId, blockId: removed.focus.blockId, pos: removed.focus.pos });
+        scheduleSave(docId);
+        return;
+      }
+    }
     const visible = ops.getVisibleIndices(blocks);
     const vi = visible.indexOf(index);
     const prevIsAdjacent = vi > 0 && visible[vi - 1] === index - 1;

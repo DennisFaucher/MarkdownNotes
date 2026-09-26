@@ -1,6 +1,7 @@
 import { useDocStore } from "../state/useDocStore";
 import { useTabsStore } from "../state/useTabsStore";
 import { BlockTree } from "../editor/BlockTree";
+import { PreLines } from "../editor/PreLines";
 
 export function DaySection({ dayId }: { dayId: string }) {
   const doc = useDocStore((s) => s.docs[dayId]);
@@ -16,6 +17,7 @@ export function DaySection({ dayId }: { dayId: string }) {
       >
         {doc.title}
       </h2>
+      <PreLines preLines={doc.preLines} />
       <BlockTree docId={dayId} />
     </section>
   );

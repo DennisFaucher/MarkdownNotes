@@ -17,6 +17,10 @@ import { indexFile, pathKind, relPath, removeFileFromIndex } from "../index/buil
  */
 export function startWatcher(): void {
   const watcher = chokidar.watch([JOURNALS_DIR, PAGES_DIR], {
+    // `.conflict-` is shared with listMarkdownFiles() (via isIndexableFile) on
+    // purpose: if the rebuild indexed those files but the watcher ignored them,
+    // deleting one could never call removeFileFromIndex and its rows would sit
+    // in the index forever. `.tmp-` is this app's own atomic-write scratch file.
     ignored: (path) => path.includes(".tmp-") || path.includes(".conflict-"),
     ignoreInitial: true,
     // Native OS filesystem events (inotify/FSEvents) are well known to be

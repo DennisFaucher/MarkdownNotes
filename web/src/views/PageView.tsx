@@ -3,6 +3,7 @@ import { useDocStore } from "../state/useDocStore";
 import { useTabsStore } from "../state/useTabsStore";
 import { fetchPage } from "../sync/api";
 import { BlockTree } from "../editor/BlockTree";
+import { PreLines } from "../editor/PreLines";
 
 export function PageView({ id, title }: { id: string; title: string }) {
   const doc = useDocStore((s) => s.docs[id]);
@@ -30,6 +31,7 @@ export function PageView({ id, title }: { id: string; title: string }) {
           {isFavorite ? "★" : "☆"}
         </button>
       </div>
+      <PreLines preLines={doc.preLines} />
       <BlockTree docId={id} />
     </div>
   );

@@ -140,6 +140,29 @@ export function outdentRange(blocks: EditorBlock[], startIndex: number, endIndex
   return next;
 }
 
+/**
+ * Drops a block outright, as opposed to merging it into a neighbour. This is
+ * the only route by which a leading block can leave a document at all —
+ * mergeWithPrevious has no previous block to merge into at index 0, so
+ * without this op a stray empty bullet at the top of a file is unreachable.
+ *
+ * Refuses when the block is the document's only one (a file must keep at
+ * least one block to serialize) or has children (they would be orphaned,
+ * since only the block's own lines are removed).
+ */
+export function removeBlock(
+  blocks: EditorBlock[],
+  index: number,
+): { blocks: EditorBlock[]; focus: FocusTarget } | null {
+  if (index < 0 || index >= blocks.length) return null;
+  if (blocks.length === 1) return null;
+  if (hasChildren(blocks, index)) return null;
+  const next = [...blocks];
+  next.splice(index, 1);
+  const focusIndex = Math.min(index, next.length - 1);
+  return { blocks: next, focus: { blockId: next[focusIndex].id, pos: 0 } };
+}
+
 export function mergeWithPrevious(
   blocks: EditorBlock[],
   index: number,

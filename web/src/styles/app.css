@@ -480,12 +480,15 @@ body {
   font-size: 13px;
 }
 
+/* Rows are neutral, not tag chips. The chip blue (--mn-tag-bg) is for inline
+   tags inside rendered text; on a menu row it made every option look equally
+   selected, so the cursor's position had nothing to contrast against. */
 .mn-tag-autocomplete-item {
   padding: 5px 8px;
   border-radius: 4px;
   cursor: pointer;
-  color: var(--mn-tag-text);
-  background: var(--mn-tag-bg);
+  color: var(--mn-text);
+  background: transparent;
   margin-bottom: 2px;
 }
 
@@ -493,9 +496,14 @@ body {
   margin-bottom: 0;
 }
 
+/* Keyboard selection is a solid fill plus a weight change, not an outline — an
+   inset 2px outline measured 1.12:1 against the old chip blue and was
+   effectively invisible. The weight change is a second, non-color channel. */
 .mn-tag-autocomplete-item.active {
-  outline: 2px solid var(--mn-link-internal);
-  outline-offset: -2px;
+  background: var(--mn-accent-bg);
+  color: var(--mn-accent-text);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--mn-accent-text);
 }
 
 .mn-spell-popover-message {
@@ -579,10 +587,50 @@ body {
 .mn-h5 {
   font-size: 1em;
 }
-.mn-h6 {
-  font-size: 0.9em;
-  opacity: 0.8;
-}
+  .mn-h6 {
+    font-size: 0.9em;
+    opacity: 0.8;
+  }
+
+  /* preLines: the non-bullet lines before a file's first block — a Logseq-style
+     `### heading` plus its `collapsed:: true` property, on the 148 imported
+     journal days that start with one. Read-only: these aren't blocks, so there
+     is no editor to focus and no block_index to address them by. */
+  .mn-prelines {
+    margin: 0 0 0.5em 0;
+  }
+
+  .mn-prelines .mn-heading {
+    margin: 0.6em 0 0.2em 0;
+  }
+
+  .mn-prelines .mn-heading:first-child {
+    margin-top: 0;
+  }
+
+  .mn-preline-line {
+    color: var(--mn-text);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .mn-preline-property {
+    display: flex;
+    gap: 0.4em;
+    align-items: baseline;
+    color: var(--mn-text);
+    opacity: 0.65;
+    font-size: 0.85em;
+  }
+
+  .mn-preline-property-key {
+    opacity: 0.8;
+  }
+
+  .mn-preline-property-value {
+    color: var(--mn-text);
+  }
+
 
 .mn-inline-code {
   font-family: "SF Mono", "Fira Code", Menlo, Consolas, monospace;

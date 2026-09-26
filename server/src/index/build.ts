@@ -1,6 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { getIndex } from "./db.js";
+import { isIndexableFile } from "./fileFilter.js";
 import { JOURNALS_DIR, PAGES_DIR, VAULT_PATH } from "../config.js";
 import { parseDoc } from "../markdown/tokenize.js";
 import { deriveBlock } from "../markdown/derive.js";
@@ -117,7 +118,7 @@ export function removeFileFromIndex(path: string): void {
 async function listMarkdownFiles(dir: string): Promise<string[]> {
   try {
     const entries = await readdir(dir);
-    return entries.filter((f) => f.endsWith(".md")).map((f) => join(dir, f));
+    return entries.filter(isIndexableFile).map((f) => join(dir, f));
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") return [];
     throw err;

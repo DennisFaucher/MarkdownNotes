@@ -12,6 +12,10 @@
   --mn-code-bg: #f0e9db;
   --mn-highlight-bg: #f9d86c;
   --mn-border: rgba(53, 65, 69, 0.12);
+  /* Autocomplete selection fill. A darker teal than --mn-link-internal
+     (#009991) on purpose: white on #009991 is only 3.52:1, this is 5.20:1. */
+  --mn-accent-bg: #007a75;
+  --mn-accent-text: #ffffff;
 
   --mn-font-content: "Fira Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   --mn-font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -31,4 +35,6 @@
   --mn-code-bg: #073945;
   --mn-highlight-bg: #f9d86c;
   --mn-border: rgba(175, 182, 182, 0.16);
+  --mn-accent-bg: #c99733;
+  --mn-accent-text: #00323d;
 }

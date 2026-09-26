@@ -11,6 +11,11 @@ build/
 .env
 .env.local
 
+# Local agent/AI working notes — machine- and session-specific operational
+# knowledge, not project source. Kept on disk (agents read it regardless of
+# git tracking) but not committed.
+/AGENTS.md
+
 # SQLite index (disposable, rebuilt from vault)
 *.sqlite
 *.sqlite-shm
