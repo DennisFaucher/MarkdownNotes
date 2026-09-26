@@ -1,4 +1,5 @@
 import { useUiStore } from "../state/useUiStore";
+import { IndentButtons } from "./IndentButtons";
 
 export function TopBar() {
   const theme = useUiStore((s) => s.theme);
@@ -18,6 +19,7 @@ export function TopBar() {
       <button className="mn-calendar-trigger" onClick={openCalendar} title="Jump to date">
         📅
       </button>
+      <IndentButtons />
       <div className="mn-top-bar-spacer" />
       <button className="mn-theme-toggle" onClick={toggleTheme} title="Toggle theme">
         {theme === "light" ? "🌙" : "☀️"}

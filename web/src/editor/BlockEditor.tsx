@@ -3,6 +3,7 @@ import { useDocStore } from "../state/useDocStore";
 import { useUiStore } from "../state/useUiStore";
 import { fetchPage, fetchTags } from "../sync/api";
 import { flushSave, scheduleSave } from "../sync/autosave";
+import { noteActiveBlock } from "./activeBlock";
 import { getCaretCoordinates } from "./caretPosition";
 import { handleBlockKeyDown } from "./keymap";
 import { insertUploadedImage } from "./imageInsert";
@@ -159,6 +160,7 @@ export function BlockEditor({ docId, index, block }: Props) {
     if (ref.current && document.activeElement !== ref.current) {
       ref.current.focus();
     }
+    if (ref.current) noteActiveBlock(docId, block.id, ref.current.selectionStart);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -218,10 +220,12 @@ export function BlockEditor({ docId, index, block }: Props) {
           scheduleSave(docId);
           updateTagQuery(e.currentTarget);
           updateSlashQuery(e.currentTarget);
+          noteActiveBlock(docId, block.id, e.currentTarget.selectionStart);
         }}
         onSelect={(e) => {
           updateTagQuery(e.currentTarget);
           updateSlashQuery(e.currentTarget);
+          noteActiveBlock(docId, block.id, e.currentTarget.selectionStart);
         }}
         onKeyDown={(e) => {
           if (tagQuery && tagMatches.length > 0) {
