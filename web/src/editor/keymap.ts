@@ -139,6 +139,36 @@ export function handleBlockKeyDown(e: KeyboardEvent<HTMLTextAreaElement>, docId:
     return;
   }
 
+  // Right Arrow at the end of a block continues into the next visible block at
+  // its first character, and Left Arrow at the first character returns to the
+  // previous visible block at its end. Each block is a whole <textarea>, so the
+  // native keypress cannot cross the boundary on its own — this is what makes
+  // the outliner read as one continuous document. Column is deliberately NOT
+  // preserved (unlike ArrowUp/ArrowDown above): the target is a line boundary,
+  // not a matching column, so a short next block gets pos 0 and a short
+  // previous block gets its own end.
+  if (e.key === "ArrowRight" && !isMod && !e.shiftKey && atEnd) {
+    const visible = ops.getVisibleIndices(blocks);
+    const vi = visible.indexOf(index);
+    if (vi < visible.length - 1) {
+      e.preventDefault();
+      const nextBlock = blocks[visible[vi + 1]];
+      requestFocus({ docId, blockId: nextBlock.id, pos: 0 });
+    }
+    return;
+  }
+
+  if (e.key === "ArrowLeft" && !isMod && !e.shiftKey && atStart) {
+    const visible = ops.getVisibleIndices(blocks);
+    const vi = visible.indexOf(index);
+    if (vi > 0) {
+      e.preventDefault();
+      const prevBlock = blocks[visible[vi - 1]];
+      requestFocus({ docId, blockId: prevBlock.id, pos: prevBlock.source.length });
+    }
+    return;
+  }
+
   if (e.key === "Escape") {
     ta.blur();
   }
