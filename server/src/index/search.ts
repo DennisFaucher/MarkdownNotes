@@ -1,5 +1,6 @@
 import { getIndex } from "./db.js";
 import { toFtsQuery } from "./ftsQuery.js";
+import { isBareTagQuery } from "./tagQuery.js";
 
 export interface SearchResult {
   blockId: string;
@@ -24,11 +25,23 @@ export interface SearchResult {
 const SNIPPET_START = "\u0001";
 const SNIPPET_END = "\u0002";
 
-export function searchBlocks(query: string, limit = 30): SearchResult[] {
+// A lone `#tag` is the one query shape where bm25 actively misleads: matching
+// blocks are near-identical bare tags, so the scores tie and SQLite breaks the
+// tie arbitrarily. That surfaced the *oldest* notes about a topic and — with a
+// result cap — dropped the newest ones entirely. Everything else keeps
+// relevance, where ranking genuinely separates a strong match from a weak one.
+// See isBareTagQuery in tagQuery.ts.
+const SEARCH_LIMIT = 100;
+
+export function searchBlocks(query: string, limit = SEARCH_LIMIT): SearchResult[] {
   const match = toFtsQuery(query.trim());
   // A query made only of operators/punctuation leaves nothing to match.
   if (match.length === 0) return [];
   const db = getIndex();
+  // `files.path` is the sort key because journal filenames are `YYYY_MM_DD.md`,
+  // so descending lexical order is descending date order; block_index keeps
+  // blocks within one day in their original order.
+  const orderBy = isBareTagQuery(query) ? "files.path DESC, blocks.block_index ASC" : "rank";
   try {
     const rows = db
       .prepare(
@@ -38,7 +51,7 @@ export function searchBlocks(query: string, limit = 30): SearchResult[] {
          JOIN files ON files.path = blocks_fts.path
          JOIN blocks ON blocks.id = blocks_fts.block_id
          WHERE blocks_fts MATCH ?
-         ORDER BY rank
+         ORDER BY ${orderBy}
          LIMIT ?`,
       )
       .all(SNIPPET_START, SNIPPET_END, match, limit) as unknown as SearchResult[];

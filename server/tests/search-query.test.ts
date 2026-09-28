@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { toFtsQuery } from "../src/index/ftsQuery.js";
+import { isBareTagQuery } from "../src/index/tagQuery.js";
 
 /**
  * The search box used to quote the entire query as one FTS5 phrase, so
@@ -52,5 +53,32 @@ describe("toFtsQuery", () => {
     // strips them anyway, so this degrades to an AND of the words — broader,
     // but never an error.
     expect(toFtsQuery("(as planned)")).toBe('"(as" "planned)"');
+  });
+});
+
+/**
+ * Which queries get date ordering instead of bm25 relevance. A lone `#tag` is
+ * the case where relevance actively misleads: every match is a near-identical
+ * bare tag, so bm25 ties and SQLite's tie-break is arbitrary — which is why
+ * `#RTXNotes` (80 blocks) used to list January first and drop every September
+ * entry past the 30-result cap.
+ */
+describe("isBareTagQuery", () => {
+  it("accepts a single tag", () => {
+    expect(isBareTagQuery("#RTXNotes")).toBe(true);
+    expect(isBareTagQuery("  #mcpnotes  ")).toBe(true);
+  });
+
+  it("rejects anything with a second term, so real keyword search keeps relevance", () => {
+    expect(isBareTagQuery("#a #b")).toBe(false);
+    expect(isBareTagQuery("#RTXNotes migration")).toBe(false);
+    expect(isBareTagQuery("migration")).toBe(false);
+    expect(isBareTagQuery("#RTXNotes AND foo")).toBe(false);
+  });
+
+  it("rejects empty and degenerate input", () => {
+    expect(isBareTagQuery("")).toBe(false);
+    expect(isBareTagQuery("#")).toBe(false);
+    expect(isBareTagQuery("   ")).toBe(false);
   });
 });
