@@ -850,6 +850,13 @@ body {
   color: var(--mn-link-external);
 }
 
+/* A `[label](url)` link shows its label, not its URL. Underline it so it's
+   distinguishable from an adjacent bare URL, which is itself the link text. */
+.mn-link-labeled {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* Search modal */
 .mn-search-overlay {
   position: fixed;

@@ -6,6 +6,7 @@ import { flushSave, scheduleSave } from "../sync/autosave";
 import { noteActiveBlock } from "./activeBlock";
 import { getCaretCoordinates } from "./caretPosition";
 import { handleBlockKeyDown } from "./keymap";
+import { markdownFromHtmlIfLinked } from "./htmlPaste";
 import { insertUploadedImage } from "./imageInsert";
 import * as ops from "./ops";
 import { parsePastedMarkdown } from "./pasteMarkdown";
@@ -293,23 +294,44 @@ export function BlockEditor({ docId, index, block }: Props) {
           }
 
           const text = e.clipboardData.getData("text/plain");
-          if (!text.includes("\n")) return; // default single-line paste is already correct
+          // A copied link is only recoverable from the HTML flavour — plain text
+          // is just the anchor's label, so pasting a page's link list with the
+          // text alone silently drops every URL. Divert to HTML only when it
+          // actually carries a link, so markdown-source pastes keep the
+          // well-tested plain-text path below unchanged.
+          const fromHtml = markdownFromHtmlIfLinked(e.clipboardData.getData("text/html"));
+          const source = fromHtml ?? text;
+
+          // A single line with nothing to recover is already handled correctly
+          // by the browser's own paste; leave it alone.
+          if (fromHtml === null && !text.includes("\n")) return;
           e.preventDefault();
           const ta = e.currentTarget;
 
-          // Inside an open code fence, a multi-line paste is literal file
-          // content — it must stay newlines-in-one-block, not explode into a
-          // sibling block per line like a pasted list would.
-          if (ops.isInsideFence(block.source, ta.selectionStart)) {
-            const newSource = block.source.slice(0, ta.selectionStart) + text + block.source.slice(ta.selectionEnd);
-            const newPos = ta.selectionStart + text.length;
+          // A lone link is inline content, not a list — insert it at the caret
+          // instead of exploding it into a sibling block.
+          if (fromHtml !== null && !source.includes("\n")) {
+            const newSource = ta.value.slice(0, ta.selectionStart) + source + ta.value.slice(ta.selectionEnd);
+            const newPos = ta.selectionStart + source.length;
             useDocStore.getState().updateBlocks(docId, (blocks) => ops.updateBlockSource(blocks, index, newSource), true);
             useUiStore.getState().requestFocus({ docId, blockId: block.id, pos: newPos });
             scheduleSave(docId);
             return;
           }
 
-          const entries = parsePastedMarkdown(text, block.depth);
+          // Inside an open code fence, a multi-line paste is literal file
+          // content — it must stay newlines-in-one-block, not explode into a
+          // sibling block per line like a pasted list would.
+          if (ops.isInsideFence(block.source, ta.selectionStart)) {
+            const newSource = block.source.slice(0, ta.selectionStart) + source + block.source.slice(ta.selectionEnd);
+            const newPos = ta.selectionStart + source.length;
+            useDocStore.getState().updateBlocks(docId, (blocks) => ops.updateBlockSource(blocks, index, newSource), true);
+            useUiStore.getState().requestFocus({ docId, blockId: block.id, pos: newPos });
+            scheduleSave(docId);
+            return;
+          }
+
+          const entries = parsePastedMarkdown(source, block.depth);
           const { blocks: nb, focus } = ops.pasteBlocks(
             useDocStore.getState().docs[docId].blocks,
             index,

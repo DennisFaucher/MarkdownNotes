@@ -1,15 +1,22 @@
 import type { ReactNode } from "react";
-import { Chip, ExternalLinkSpan } from "./Chip";
+import { Chip, ExternalLinkSpan, MarkdownLink } from "./Chip";
 import type { SpellMatch } from "../sync/api";
 
-// `inline code` | **bold** | *italic* | [[page ref]] | #tag | bare URL. Images
-// are still deferred. Alternation order matters: code is tried first so a
+// `inline code` | **bold** | *italic* | [[page ref]] | #tag | [label](url) | bare URL.
+// Images are still deferred. Alternation order matters: code is tried first so a
 // backtick span's contents are never re-tokenized, and bold (**) is tried
 // before italic (*) so "**x**" isn't parsed as italic around a stray "*x*".
 // Bold/italic require a non-whitespace character on each inner edge (CommonMark's
 // flanking rule, simplified) so "3 * 4 * 5" isn't misread as italic.
+//
+// The markdown-link alternative is `(?<!!)`-guarded so an inline image
+// `![alt](src)` is left alone: without the lookbehind the link would match at
+// the `[`, leaving a literal `!` and turning the image into a link. The
+// whole-line image form is handled earlier by IMAGE_LINE_RE. Matching left to
+// right means the link alternative claims the `[`, so the bare-URL alternative
+// can never get in and split `[label](url)` into literal text plus a URL chip.
 const TOKEN_RE =
-  /(`([^`]+)`)|(\*\*(\S(?:[^*]*\S)?)\*\*)|(\*(\S(?:[^*]*\S)?)\*)|(\[\[([^\]]+)\]\])|(#([A-Za-z][A-Za-z0-9_\-/]*))|(https?:\/\/[^\s)]+)/g;
+  /(`([^`]+)`)|(\*\*(\S(?:[^*]*\S)?)\*\*)|(\*(\S(?:[^*]*\S)?)\*)|(\[\[([^\]]+)\]\])|(#([A-Za-z][A-Za-z0-9_\-/]*))|(?<!!)\[([^\]\n]+)\]\(([^)\s]+)\)|(https?:\/\/[^\s)]+)/g;
 
 export interface InlineHandlers {
   onNavigatePage: (title: string) => void;
@@ -124,7 +131,15 @@ export function renderInline(
         <Chip key={key++} kind="tag" label={`#${tag}`} dataS={baseOffset + start} dataE={baseOffset + end} onActivate={() => handlers.onNavigateTag(tag)} />,
       );
     } else if (m[11]) {
-      nodes.push(<ExternalLinkSpan key={key++} href={m[11]} dataS={baseOffset + start} dataE={baseOffset + end} />);
+      // `[label](url)`. The label is recursed into so a tag, bold or a second
+      // link inside it still renders; its offsets start one past the `[`.
+      nodes.push(
+        <MarkdownLink key={key++} href={m[12]} dataS={baseOffset + start} dataE={baseOffset + end}>
+          {renderInline(m[11], handlers, baseOffset + start + 1, spellMatches)}
+        </MarkdownLink>,
+      );
+    } else if (m[13]) {
+      nodes.push(<ExternalLinkSpan key={key++} href={m[13]} dataS={baseOffset + start} dataE={baseOffset + end} />);
     }
     lastIndex = end;
   }

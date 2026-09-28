@@ -1,4 +1,4 @@
-import type { MouseEvent } from "react";
+import type { MouseEvent, ReactNode } from "react";
 
 interface ChipProps {
   label: string;
@@ -62,6 +62,50 @@ export function ExternalLinkSpan({ href, dataS, dataE }: { href: string; dataS: 
       onMouseUp={handleMouseUp}
     >
       {href}
+    </a>
+  );
+}
+
+/** A markdown `[label](url)` link. Unlike ExternalLinkSpan the visible text is
+ *  the label, not the URL, so the label arrives pre-rendered — that keeps tags,
+ *  bold and nested links inside it working, same as inside bold/italic.
+ *  data-chip marks the whole `[label](url)` range so a click resolves to its
+ *  start rather than a caret offset inside the link. */
+export function MarkdownLink({
+  href,
+  dataS,
+  dataE,
+  children,
+}: {
+  href: string;
+  dataS: number;
+  dataE: number;
+  children: ReactNode;
+}) {
+  const handleMouseDown = (e: MouseEvent) => {
+    if (e.altKey) {
+      e.preventDefault();
+      return;
+    }
+    e.stopPropagation();
+  };
+  const handleMouseUp = (e: MouseEvent) => {
+    if (e.altKey) return;
+    e.stopPropagation();
+  };
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mn-link mn-link-labeled"
+      data-s={dataS}
+      data-e={dataE}
+      data-chip="true"
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+    >
+      {children}
     </a>
   );
 }
