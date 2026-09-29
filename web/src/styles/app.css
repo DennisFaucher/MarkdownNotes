@@ -388,6 +388,56 @@ body {
   align-items: flex-start;
   gap: 4px;
   padding: 2px 0;
+  /* Own stacking context so the thread lines below can sit behind the row's
+     content (z-index: -1) without slipping behind the page card. */
+  position: relative;
+  isolation: isolate;
+  --mn-thread-x: 33px; /* parent bullet's center: 26px caret + 4px gap + half the 6px bullet */
+}
+
+/* Bullet threading: a thin vertical line under each ancestor's bullet,
+   running down through its whole subtree. Rows are a flat list (indent is a
+   margin, not nesting), so each row draws one line per ancestor level itself:
+   the pseudo-element spans the row's own indent to the left of it, and a
+   22px-period gradient puts one line in every level. Adjacent rows have no
+   gap, so the lines join up; a subtree's end or a collapsed parent stops them
+   with no bookkeeping. */
+.mn-block-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  /* Level k's line sits at (k + 1) * 22 + 11 from the tree's left edge — under
+     the ancestor's bullet, which is inside the *next* indent step. So the
+     pseudo-element starts one step in from the tree edge and reaches 11px into
+     this row for the innermost ancestor's line. */
+  left: calc((var(--depth, 0) - 1) * -22px);
+  width: calc(var(--depth, 0) * 22px);
+  z-index: -1;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc(var(--mn-thread-x) - 22px),
+    var(--mn-thread) calc(var(--mn-thread-x) - 22px),
+    var(--mn-thread) calc(var(--mn-thread-x) - 21px),
+    transparent calc(var(--mn-thread-x) - 21px),
+    transparent 22px
+  );
+}
+
+/* An expanded parent starts its own thread right under its bullet, rather
+   than half a row lower where its first child begins. */
+.mn-row-open-parent::after {
+  content: "";
+  position: absolute;
+  left: var(--mn-thread-x);
+  top: 21px;
+  bottom: 0;
+  width: 1px;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--mn-thread);
 }
 
 /* Brief highlight on a block jumped to from elsewhere (e.g. a To Dos entry),
@@ -1326,6 +1376,10 @@ body {
   .mn-collapse-caret {
     width: 32px;
     font-size: 22px;
+  }
+
+  .mn-block-row {
+    --mn-thread-x: 39px; /* 32px caret + 4px gap + 3px */
   }
 
   .mn-resizable-image-handle {

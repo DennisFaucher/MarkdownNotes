@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { useDocStore } from "../state/useDocStore";
 import { useUiStore } from "../state/useUiStore";
 import { scheduleSave } from "../sync/autosave";
@@ -19,7 +20,11 @@ export function BlockRow({ docId, index, block, allBlocks }: Props) {
   const canCollapse = hasChildren(allBlocks, index);
 
   return (
-    <div className="mn-block-row" data-block-index={index} style={{ marginLeft: block.depth * 22 }}>
+    <div
+      className={`mn-block-row${canCollapse && !block.collapsed ? " mn-row-open-parent" : ""}`}
+      data-block-index={index}
+      style={{ marginLeft: block.depth * 22, "--depth": block.depth } as CSSProperties}
+    >
       <span
         className={`mn-collapse-caret${canCollapse ? " mn-has-children" : ""}${block.collapsed ? " mn-collapsed" : ""}`}
         onMouseDown={(e) => {
