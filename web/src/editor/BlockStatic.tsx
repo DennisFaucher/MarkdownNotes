@@ -6,6 +6,7 @@ import { CodeCopyButton } from "./CodeCopyButton";
 import { useTabsStore } from "../state/useTabsStore";
 import { useUiStore } from "../state/useUiStore";
 import { useBlockSpellCheck } from "./useBlockSpellCheck";
+import { resolveImageSrc } from "./imageSrc";
 
 interface Props {
   blockId: string;
@@ -23,16 +24,6 @@ interface Props {
   // as clicking a badge in the To Dos dashboard — but from wherever the
   // block is normally visible, matching Logseq's own click-to-check-off.
   onToggleMarker: () => void;
-}
-
-// Uploaded images are referenced as "../assets/<file>" (one level up from
-// journals/ or pages/, per the vault's on-disk layout — see server/src/api/
-// assets.ts), which resolves to "/assets/<file>" at the HTTP root. An
-// absolute URL (an externally-hosted image someone pasted a markdown link
-// to) or an already-rooted path is left untouched.
-function resolveImageSrc(src: string): string {
-  if (/^(https?:)?\/\//.test(src) || src.startsWith("/")) return src;
-  return `/${src.replace(/^(\.\.?\/)+/, "")}`;
 }
 
 const HEADING_RE = /^(#{1,6})\s+(.*)$/;

@@ -37,7 +37,17 @@ interface UiState {
   calendarOpen: boolean;
   openCalendar: () => void;
   closeCalendar: () => void;
+  /** Mounts the print/PDF document and triggers the browser's print dialog. */
+  printOpen: boolean;
+  openPrint: () => void;
+  closePrint: () => void;
   toggleCalendar: () => void;
+  /** Fallback teardown for the print document. `afterprint` covers the normal
+   *  path, but it is not guaranteed to fire (a user can dismiss the dialog via
+   *  the browser's own shortcut, and some embedded webviews never fire it) —
+   *  and a stale `printOpen` would silently re-print the next document that
+   *  gets mounted. Poll for the dialog being gone instead. */
+  registerPrintDone: (fn: () => void) => () => void;
   /** Whether the server has a LANGUAGETOOL_URL configured — set once at
    *  startup (see App.tsx). Spellcheck UI stays fully inert until this is true. */
   spellcheckEnabled: boolean;
@@ -105,6 +115,34 @@ export const useUiStore = create<UiState>((set) => ({
   openCalendar: () => set({ calendarOpen: true }),
   closeCalendar: () => set({ calendarOpen: false }),
   toggleCalendar: () => set((state) => ({ calendarOpen: !state.calendarOpen })),
+
+  printOpen: false,
+  openPrint: () => set({ printOpen: true }),
+  closePrint: () => set({ printOpen: false }),
+  registerPrintDone: (fn) => {
+    const handlers = new Set<() => void>();
+    const wrapped = () => {
+      for (const h of handlers) h();
+    };
+    window.addEventListener("afterprint", wrapped);
+    // Safari/WebKit historically did not fire `afterprint` at all; the dialog's
+    // disappearance is observable as `window.matchMedia("print")` going false.
+    let mq: MediaQueryList | null = null;
+    const onMq = (e: MediaQueryListEvent) => {
+      if (!e.matches) wrapped();
+    };
+    if (typeof window.matchMedia === "function") {
+      mq = window.matchMedia("print");
+      mq.addEventListener?.("change", onMq);
+    }
+    handlers.add(fn);
+    return () => {
+      handlers.delete(fn);
+      if (handlers.size > 0) return;
+      window.removeEventListener("afterprint", wrapped);
+      mq?.removeEventListener?.("change", onMq);
+    };
+  },
   spellcheckEnabled: false,
   setSpellcheckEnabled: (enabled) => set({ spellcheckEnabled: enabled }),
   pendingSpellOpen: null,

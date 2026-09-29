@@ -5,6 +5,7 @@ import { TopBar } from "./layout/TopBar";
 import { MainPane } from "./layout/MainPane";
 import { CalendarPicker } from "./views/CalendarPicker";
 import { SearchModal } from "./views/SearchModal";
+import { PrintDocument } from "./views/PrintDocument";
 import { useUiStore } from "./state/useUiStore";
 import { getCurrentDocId } from "./editor/currentDoc";
 import { FindReplaceBar } from "./editor/FindReplaceBar";
@@ -60,6 +61,7 @@ export function App() {
       <SearchModal />
       <CalendarPicker />
       <FindReplaceBar />
+      <PrintDocument />
     </div>
   );
 }
