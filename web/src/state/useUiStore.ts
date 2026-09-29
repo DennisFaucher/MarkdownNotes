@@ -57,6 +57,15 @@ interface UiState {
   openSidebar: () => void;
   closeSidebar: () => void;
   toggleSidebar: () => void;
+  /** One-shot request to scroll a specific block into view and flash it, e.g.
+   *  jumping from a To Dos entry to the exact line in its journal day / page.
+   *  Deliberately transient (not part of the persisted TabTarget): tabs dedupe
+   *  by kind:id, so a second jump to the same already-open doc must still
+   *  re-scroll. The target doc's view consumes and clears this once it has a
+   *  loaded doc to locate the block in. */
+  pendingScroll: { docId: string; blockIndex: number } | null;
+  requestScroll: (req: { docId: string; blockIndex: number }) => void;
+  clearPendingScroll: () => void;
 }
 
 const storedTheme = (typeof localStorage !== "undefined" && (localStorage.getItem("mn-theme") as "light" | "dark")) || "light";
@@ -105,4 +114,7 @@ export const useUiStore = create<UiState>((set) => ({
   openSidebar: () => set({ sidebarOpen: true }),
   closeSidebar: () => set({ sidebarOpen: false }),
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+  pendingScroll: null,
+  requestScroll: (req) => set({ pendingScroll: req }),
+  clearPendingScroll: () => set({ pendingScroll: null }),
 }));

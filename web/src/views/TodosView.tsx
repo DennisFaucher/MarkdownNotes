@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchTodos, toggleTodo, type TodoItem } from "../sync/api";
 import { useTabsStore } from "../state/useTabsStore";
+import { useUiStore } from "../state/useUiStore";
 
 const HEADING_RE = /^#{1,6}\s+/;
 
@@ -28,6 +29,7 @@ function groupByCategory(todos: TodoItem[]): [string, TodoItem[]][] {
 export function TodosView() {
   const [todos, setTodos] = useState<TodoItem[] | null>(null);
   const openTab = useTabsStore((s) => s.openTab);
+  const requestScroll = useUiStore((s) => s.requestScroll);
 
   useEffect(() => {
     fetchTodos()
@@ -38,8 +40,10 @@ export function TodosView() {
   const openResult = (t: TodoItem) => {
     if (t.pageKind === "journal") {
       const id = t.path.split("/").pop()!.replace(/\.md$/, "");
+      requestScroll({ docId: id, blockIndex: t.blockIndex });
       openTab({ kind: "journal-day", id, title: t.pageTitle });
     } else {
+      requestScroll({ docId: t.pageTitle, blockIndex: t.blockIndex });
       openTab({ kind: "page", id: t.pageTitle, title: t.pageTitle });
     }
   };

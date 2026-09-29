@@ -374,6 +374,24 @@ body {
   padding: 2px 0;
 }
 
+/* Brief highlight on a block jumped to from elsewhere (e.g. a To Dos entry),
+   so the eye lands on the exact line. Class is added/removed by
+   useScrollToBlock.ts; this only supplies the fade. */
+.mn-block-row.mn-block-flash {
+  animation: mn-block-flash 1.6s ease-out;
+  border-radius: 4px;
+}
+
+@keyframes mn-block-flash {
+  0%,
+  45% {
+    background: var(--mn-highlight-bg);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
 .mn-collapse-caret {
   width: 26px;
   flex-shrink: 0;

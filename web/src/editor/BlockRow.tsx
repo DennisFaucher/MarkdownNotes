@@ -19,7 +19,7 @@ export function BlockRow({ docId, index, block, allBlocks }: Props) {
   const canCollapse = hasChildren(allBlocks, index);
 
   return (
-    <div className="mn-block-row" style={{ marginLeft: block.depth * 22 }}>
+    <div className="mn-block-row" data-block-index={index} style={{ marginLeft: block.depth * 22 }}>
       <span
         className={`mn-collapse-caret${canCollapse ? " mn-has-children" : ""}${block.collapsed ? " mn-collapsed" : ""}`}
         onMouseDown={(e) => {

@@ -4,6 +4,7 @@ import { useTabsStore } from "../state/useTabsStore";
 import { fetchPage } from "../sync/api";
 import { BlockTree } from "../editor/BlockTree";
 import { PreLines } from "../editor/PreLines";
+import { useScrollToBlock } from "../editor/useScrollToBlock";
 
 export function PageView({ id, title }: { id: string; title: string }) {
   const doc = useDocStore((s) => s.docs[id]);
@@ -16,6 +17,8 @@ export function PageView({ id, title }: { id: string; title: string }) {
       fetchPage(id).then(setDoc).catch(console.error);
     }
   }, [id, doc, setDoc]);
+
+  useScrollToBlock(id);
 
   if (!doc) return <div className="mn-page-view mn-loading">Loading…</div>;
 

@@ -3,6 +3,7 @@ import { useDocStore } from "../state/useDocStore";
 import { fetchJournalDay } from "../sync/api";
 import { BlockTree } from "../editor/BlockTree";
 import { PreLines } from "../editor/PreLines";
+import { useScrollToBlock } from "../editor/useScrollToBlock";
 
 /** A single journal day, addressable outside the main Journals feed's rolling
  *  pagination window — used when search or a tag link points at a specific day. */
@@ -15,6 +16,8 @@ export function JournalDayView({ id }: { id: string }) {
       fetchJournalDay(id.replace(/_/g, "-")).then(setDoc).catch(console.error);
     }
   }, [id, doc, setDoc]);
+
+  useScrollToBlock(id);
 
   if (!doc) return <div className="mn-page-view mn-loading">Loading…</div>;
 
