@@ -31,6 +31,7 @@ interface TabsState {
   toggleFavorite: (id: string, title: string) => void;
   isFavorite: (id: string) => boolean;
   pushRecent: (id: string, title: string) => void;
+  removeRecent: (id: string) => void;
 }
 
 function targetKey(t: TabTarget): string {
@@ -135,6 +136,17 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     set((state) => {
       const filtered = state.recents.filter((r) => r.id !== id);
       const recents = [{ id, title, at: Date.now() }, ...filtered].slice(0, 20);
+      saveJson("mn-recents", recents);
+      return { recents };
+    }),
+
+  /** Drop an entry from the Recent list. Independent of favorites and of open
+   *  tabs: the page stays open and stays favorited, and it reappears here the
+   *  next time it's opened, since `openTab` pushes to recents. That mirrors
+   *  what un-favoriting does. */
+  removeRecent: (id) =>
+    set((state) => {
+      const recents = state.recents.filter((r) => r.id !== id);
       saveJson("mn-recents", recents);
       return { recents };
     }),

@@ -93,7 +93,11 @@ body {
   flex: 1;
 }
 
-.mn-unfavorite {
+/* Both sidebar lists (Favorites, Recent) use the same trailing × — the two
+   class names stay distinct because they mean different things, but they are
+   one visual treatment. */
+.mn-unfavorite,
+.mn-unrecent {
   background: none;
   border: none;
   color: var(--mn-text);
@@ -102,8 +106,20 @@ body {
   padding: 4px 8px;
 }
 
-.mn-unfavorite:hover {
+.mn-unfavorite:hover,
+.mn-unrecent:hover {
   opacity: 1;
+}
+
+/* A touch device never fires :hover, so the opacity-1 rule above can never
+   apply and both × stay permanently at 0.5. Same reasoning as .mn-code-copy
+   below: force full opacity, and give them a slightly larger target. */
+@media (hover: none) {
+  .mn-unfavorite,
+  .mn-unrecent {
+    opacity: 1;
+    padding: 6px 10px;
+  }
 }
 
 /* Content column */

@@ -7,6 +7,7 @@ export function Sidebar() {
   const favorites = useTabsStore((s) => s.favorites);
   const recents = useTabsStore((s) => s.recents);
   const toggleFavorite = useTabsStore((s) => s.toggleFavorite);
+  const removeRecent = useTabsStore((s) => s.removeRecent);
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);
   const closeSidebar = useUiStore((s) => s.closeSidebar);
 
@@ -60,13 +61,17 @@ export function Sidebar() {
           <div className="mn-sidebar-heading">Recent</div>
           {recents.length === 0 && <div className="mn-sidebar-empty">Nothing recent</div>}
           {recents.map((r) => (
-            <button
-              key={r.id}
-              className={`mn-nav-item${activeKey === `page:${r.id}` ? " active" : ""}`}
-              onClick={go(() => openTab({ kind: "page", id: r.id, title: r.title }))}
-            >
-              {r.title}
-            </button>
+            <div key={r.id} className="mn-sidebar-row">
+              <button
+                className={`mn-nav-item${activeKey === `page:${r.id}` ? " active" : ""}`}
+                onClick={go(() => openTab({ kind: "page", id: r.id, title: r.title }))}
+              >
+                {r.title}
+              </button>
+              <button className="mn-unrecent" title="Remove from recent" onClick={() => removeRecent(r.id)}>
+                ×
+              </button>
+            </div>
           ))}
         </div>
       </aside>
