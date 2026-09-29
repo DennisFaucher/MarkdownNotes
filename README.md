@@ -2,7 +2,7 @@
 
 A self-hosted, file-based Zettelkasten notes app that replicates [Logseq](https://logseq.com/)'s day-to-day UX — daily journals, a block outliner, hashtags, full-text search — while keeping plain markdown files as the source of truth. No proprietary database, no lock-in: your notes are just `.md` files on disk that any tool (or sync service) can read. I asked Claude for help creating this as Logseq is moving from individual markdown files to a single database.
 
-<img width="1680" height="1084" alt="Screenshot 2026-09-24 at 7 35 49 AM" src="https://github.com/user-attachments/assets/2c2d3715-c8aa-41aa-b21e-e1bc9053914a" />
+<img width="1249" height="771" alt="image" src="https://github.com/user-attachments/assets/70303fd6-0a05-4048-b2a4-65ee8ebb05ee" />
 
 
 ## Features
