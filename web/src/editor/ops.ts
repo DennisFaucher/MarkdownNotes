@@ -94,11 +94,27 @@ export function insertNewline(blocks: EditorBlock[], index: number, caretPos: nu
   return { blocks: next, focus: { blockId: b.id, pos: caretPos + 1 } };
 }
 
-/** Indent: only valid when an immediately preceding sibling at the same depth exists. */
+/** Indent: a block may be indented as long as the block above it is NOT shallower.
+ *
+ *  The immediately preceding block does not have to be a *sibling* — when it is
+ *  deeper, indenting makes this block a sibling of it instead, inheriting the
+ *  same parent. That is the case that matters when a document was hand-edited
+ *  or pasted and a block sits at the same depth as its own parent while the
+ *  line above it has already gone one level deeper:
+ *
+ *      - **Broadcom**                            depth 2
+ *          - 9/23 Rita Sent this Agenda to…      depth 3
+ *      - Introductions & Goals                   depth 2  <- indentable
+ *
+ *  Requiring `prev.depth === b.depth` refused that, and also refused indenting
+ *  the depth-3 line above it, so the whole region was frozen. Only a shallower
+ *  predecessor is genuinely unparentable, since it would leave the block
+ *  indented deeper than the line it must nest under.
+ */
 export function indentBlock(blocks: EditorBlock[], index: number): EditorBlock[] | null {
   const b = blocks[index];
   const prev = blocks[index - 1];
-  if (!prev || prev.depth !== b.depth) return null;
+  if (!prev || prev.depth < b.depth) return null;
   const next = [...blocks];
   next[index] = { ...b, depth: b.depth + 1, dirty: true };
   return next;
@@ -123,7 +139,9 @@ export function outdentBlock(blocks: EditorBlock[], index: number): EditorBlock[
  */
 export function indentRange(blocks: EditorBlock[], startIndex: number, endIndex: number): EditorBlock[] | null {
   const prev = blocks[startIndex - 1];
-  if (!prev || prev.depth !== blocks[startIndex].depth) return null;
+  // Same rule as indentBlock: a deeper predecessor is fine (the range becomes a
+  // sibling of it), a shallower one is not.
+  if (!prev || prev.depth < blocks[startIndex].depth) return null;
   const next = [...blocks];
   for (let i = startIndex; i <= endIndex; i++) next[i] = { ...next[i], depth: next[i].depth + 1, dirty: true };
   return next;
