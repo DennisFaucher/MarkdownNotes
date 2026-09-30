@@ -124,7 +124,25 @@ export type DisplaySegment =
   | { kind: "code"; lines: DisplayLine[] }
   | { kind: "table"; header: TableCell[]; align: TableAlign[]; rows: TableCell[][] }
   | { kind: "image"; image: ImageSegment }
+  | { kind: "divider"; line: DisplayLine }
   | { kind: "line"; line: DisplayLine };
+
+/** A line that is *only* a horizontal rule: three or more `-` on a line of its
+ *  own, optionally indented. This is the display-side reading of Logseq's own
+ *  `---` divider, and it covers both forms present in the vault — a block whose
+ *  entire content is `---`, and an indented `  ---` continuation line used as a
+ *  section separator inside a longer block.
+ *
+ *  Deliberately requires 3+ dashes and nothing else on the line. A table's
+ *  `| --- | --- |` separator also consists only of dashes once split into
+ *  cells, but it always contains pipes, so it can never match — and the table
+ *  branch above already claimed those lines anyway. Two dashes are left alone:
+ *  `--` is prose (an em-dash, a CLI flag, a negative argument), not a rule. */
+const DIVIDER_LINE_RE = /^-{3,}$/;
+
+export function isDividerLine(text: string): boolean {
+  return DIVIDER_LINE_RE.test(text.trim());
+}
 
 // A line that's *only* an image reference — `![alt](src)` optionally followed
 // by Logseq's `{:height H, :width W}` resize suffix — renders as an actual
@@ -209,6 +227,12 @@ export function groupDisplayLines(lines: DisplayLine[]): DisplaySegment[] {
         i++;
       }
       segments.push({ kind: "table", header, align, rows });
+      continue;
+    }
+
+    if (isDividerLine(lines[i].text)) {
+      segments.push({ kind: "divider", line: lines[i] });
+      i++;
       continue;
     }
 

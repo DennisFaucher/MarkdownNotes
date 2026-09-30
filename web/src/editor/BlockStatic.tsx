@@ -127,6 +127,9 @@ export function BlockStatic({ blockId, source, marker, onEnterEdit, onResizeImag
             </div>
           );
         }
+        if (seg.kind === "divider") {
+          return <hr key={i} className="mn-hr" data-s={seg.line.sourceOffset} />;
+        }
         if (seg.kind === "table") {
           return (
             <table key={i} className="mn-table">

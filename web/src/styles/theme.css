@@ -13,6 +13,10 @@
   --mn-highlight-bg: #f9d86c;
   --mn-border: rgba(53, 65, 69, 0.12);
   --mn-thread: rgba(53, 65, 69, 0.18);
+  /* A `---` section divider. Stronger than --mn-border (a table cell border is
+     meant to disappear) and equal to --mn-thread, so a rule reads at the same
+     weight as the bullet guides rather than as a rendering artifact. */
+  --mn-rule: rgba(53, 65, 69, 0.18);
   /* Autocomplete selection fill. A darker teal than --mn-link-internal
      (#009991) on purpose: white on #009991 is only 3.52:1, this is 5.20:1. */
   --mn-accent-bg: #007a75;
@@ -37,6 +41,7 @@
   --mn-highlight-bg: #f9d86c;
   --mn-border: rgba(175, 182, 182, 0.16);
   --mn-thread: rgba(175, 182, 182, 0.22);
+  --mn-rule: rgba(175, 182, 182, 0.22);
   --mn-accent-bg: #c99733;
   --mn-accent-text: #00323d;
 }

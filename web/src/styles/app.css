@@ -778,6 +778,16 @@ body {
   border-radius: 4px;
 }
 
+.mn-hr {
+  border: 0;
+  border-top: 1px solid var(--mn-rule);
+  margin: 10px 0;
+  /* A divider is decorative, but it is still a block: clicking it should
+     enter edit mode on the underlying `---` line like any other content, so
+     keep it a normal box rather than making it unfocusable. */
+  pointer-events: auto;
+}
+
 .mn-table {
   border-collapse: collapse;
   margin: 6px 0;
@@ -1467,6 +1477,12 @@ body {
 
   .mn-print-root {
     display: block;
+  }
+
+  /* The screen rule uses a theme border colour that prints near-invisible in
+     greyscale; use real ink so the rule survives on paper. */
+  .mn-print-hr {
+    border-top-color: #999;
   }
 
   html,

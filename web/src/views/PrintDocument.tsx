@@ -121,6 +121,9 @@ function PrintBlock({ block }: { block: EditorBlock }) {
             </pre>
           );
         }
+        if (seg.kind === "divider") {
+          return <hr key={i} className="mn-hr mn-print-hr" />;
+        }
         if (seg.kind === "table") {
           return (
             <table key={i} className="mn-print-table">
