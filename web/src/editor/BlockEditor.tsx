@@ -25,6 +25,12 @@ interface Props {
   block: EditorBlock;
 }
 
+/** Rough word count for the flavour comparison in the paste handler. */
+function countWords(text: string): number {
+  const words = text.trim().match(/\S+/g);
+  return words ? words.length : 0;
+}
+
 export function BlockEditor({ docId, index, block }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const pendingFocus = useUiStore((s) => s.pendingFocus);
@@ -298,8 +304,16 @@ export function BlockEditor({ docId, index, block }: Props) {
           // is just the anchor's label, so pasting a page's link list with the
           // text alone silently drops every URL. Divert to HTML only when it
           // actually carries a link, so markdown-source pastes keep the
-          // well-tested plain-text path below unchanged.
-          const fromHtml = markdownFromHtmlIfLinked(e.clipboardData.getData("text/html"));
+          // well-tested plain-text route below unchanged.
+          //
+          // The HTML walk exists to *recover* information, never to lose it: if
+          // it converts to strictly fewer words than the plain flavour already
+          // had, it dropped something (a structure it didn't understand —
+          // Google's wrapper-div lists were exactly this), and the complete
+          // plain text is the safer of the two. A tie keeps HTML, since URLs
+          // only ever add words.
+          let fromHtml = markdownFromHtmlIfLinked(e.clipboardData.getData("text/html"));
+          if (fromHtml !== null && countWords(fromHtml) < countWords(text)) fromHtml = null;
           const source = fromHtml ?? text;
 
           // A single line with nothing to recover is already handled correctly

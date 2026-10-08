@@ -170,6 +170,18 @@ function anchorInner(el: Element): string {
   return normalize(parts.join("\n"));
 }
 
+/**
+ * `h1`–`h6` are only half the story: Google (and any ARIA-expressing page)
+ * writes section headings as `<div role="heading" aria-level="3">`, which
+ * `HEADING_RE` misses, so a pasted section's heading arrives as an ordinary
+ * bullet. Returns 0 for anything that isn't a heading.
+ */
+function ariaHeadingLevel(el: Element): number {
+  if (el.getAttribute("role") !== "heading") return 0;
+  const level = Math.floor(Number(el.getAttribute("aria-level")));
+  return level >= 1 && level <= 6 ? level : 0;
+}
+
 /** Markdown for one block element, as lines (a nested list is several lines). */
 function blockLines(el: Element, depth: number): string[] {
   const tag = el.tagName;
@@ -187,6 +199,7 @@ function blockLines(el: Element, depth: number): string[] {
   }
 
   const heading = HEADING_RE.exec(tag);
+  const headingLevel = heading ? Number(heading[1]) : ariaHeadingLevel(el);
   const inline: string[] = [];
   const nested: string[] = [];
   for (const child of Array.from(el.childNodes)) {
@@ -195,7 +208,7 @@ function blockLines(el: Element, depth: number): string[] {
   }
 
   const body = normalize(inline.join("")).trim();
-  if (heading) return body ? [`${"#".repeat(Number(heading[1]))} ${body}`] : [];
+  if (headingLevel) return body ? [`${"#".repeat(headingLevel)} ${body}`, ...nested] : nested;
 
   const lines = body ? body.split("\n") : [];
   if (tag === "BLOCKQUOTE") {
@@ -206,26 +219,50 @@ function blockLines(el: Element, depth: number): string[] {
 }
 
 function listLines(list: Element, depth: number): string[] {
-  const ordered = list.tagName === "OL";
-  const start = Number(list.getAttribute("start")) || 1;
-  const pad = INDENT.repeat(depth);
+  const state = { ordered: list.tagName === "OL", n: Number(list.getAttribute("start")) || 1 };
   const out: string[] = [];
-  let n = start;
-  for (const li of childElements(list)) {
-    if (li.tagName !== "LI") continue;
-    const marker = ordered ? `${n}. ` : "- ";
-    n++;
+  collectListItems(list, depth, state, out);
+  return out;
+}
+
+/**
+ * Walks a list's children looking for `<li>` elements.
+ *
+ * The children aren't necessarily the `<li>`s themselves: Google's clipboard
+ * HTML (and any page using `display:contents` wrappers) puts each item inside
+ * a `<div>`/`<span>` that is the `<ul>`'s actual child, so filtering for
+ * `tagName === "LI"` finds nothing and silently drops the entire list — which
+ * is how a pasted web page could arrive as just its heading. Wrapper elements
+ * are therefore transparent: descend past them at the same depth. A stray
+ * nested `<ul>`/`<ol>` that isn't inside an `<li>` is still skipped (it has no
+ * item of its own), exactly as before. The ordered-list counter lives in
+ * `state` so numbering keeps running across wrappers.
+ */
+function collectListItems(
+  container: Element,
+  depth: number,
+  state: { ordered: boolean; n: number },
+  out: string[],
+): void {
+  const pad = INDENT.repeat(depth);
+  for (const child of childElements(container)) {
+    if (child.tagName === "UL" || child.tagName === "OL") continue;
+    if (child.tagName !== "LI") {
+      collectListItems(child, depth, state, out);
+      continue;
+    }
+    const marker = state.ordered ? `${state.n}. ` : "- ";
+    state.n++;
     const inline: string[] = [];
     const nested: string[] = [];
-    for (const child of Array.from(li.childNodes)) {
-      if (isBlock(child)) nested.push(...blockLines(child as Element, depth + 1));
-      else inline.push(inlineToMarkdown(child));
+    for (const grandchild of Array.from(child.childNodes)) {
+      if (isBlock(grandchild)) nested.push(...blockLines(grandchild as Element, depth + 1));
+      else inline.push(inlineToMarkdown(grandchild));
     }
     const body = normalize(inline.join("")).trim();
     out.push(body ? `${pad}${marker}${body}` : `${pad}${marker}`);
     out.push(...nested);
   }
-  return out;
 }
 
 function preLines(pre: Element): string[] {
